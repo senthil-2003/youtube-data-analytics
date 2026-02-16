@@ -36,10 +36,10 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         raise ValueError(f"The date {date} is not in the correct format (dd-mm-yyyy)")
 
     try: 
-        i18n_delta_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME))
+        i18n_delta_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME).replace("\\","/"))
         if not check_file_exists(spark, i18n_delta_azure_location):
             logger.info(f"The delta table for i18n data is not present in the provided location {i18n_delta_azure_location} and the pipeline will start processing the raw data to create the delta table")
-            i1_8n_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME,cred.UTIL_FOLDER_NAME,cred.I18N_FILE_NAME))
+            i1_8n_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.I18N_FILE_NAME).replace("\\","/"))
             if not check_file_exists(spark, i1_8n_raw_azure_location):
                 logger.error(f"The i18n json file name is not present in the provided location {i1_8n_raw_azure_location}")
                 raise FileNotFoundError(f"The i18n json file name is not present in the provided location {i1_8n_raw_azure_location}")
@@ -53,10 +53,10 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         return None
     
     try:
-        video_categories_delta_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME,os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_VIDEO_CATEGORIES_DELTA_TABLE_NAME))
+        video_categories_delta_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME,os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_VIDEO_CATEGORIES_DELTA_TABLE_NAME).replace("\\","/"))
         if not check_file_exists(spark, video_categories_delta_location):
             logger.info(f"The delta table for video categories data is not present in the provided location {video_categories_delta_location} and the pipeline will start processing the raw data to create the delta table")
-            video_categories_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME,cred.UTIL_FOLDER_NAME,cred.CATEGORIES_FOLDER_NAME))
+            video_categories_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.CATEGORIES_FOLDER_NAME).replace("\\","/"))
             if not check_file_exists(spark, video_categories_raw_azure_location):
                 logger.error(f"The video categories json file name is not present in the provided location {video_categories_raw_azure_location}")
                 raise FileNotFoundError(f"The video categories json file name is not present in the provided location {video_categories_raw_azure_location}")
@@ -70,11 +70,11 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         return None
             
     try:
-        popular_video_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_VIDEO_FILE_NAME))
+        popular_video_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_VIDEO_FILE_NAME).replace("\\","/"))
         popular_video_raw_df = read_obj.read_json(file_location=popular_video_raw_data_location, multiline_flag=True, type_toggle="video")
         popular_video_raw_df_filtered = df_filter_obj.format_videos(popular_video_raw_df)
         
-        video_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_VIDEO_DELTA_TABLE_NAME))
+        video_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_VIDEO_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark,video_data_delta_location):
             logger.info(f"The delta table for video data is present at the location {video_data_delta_location}")
             write_obj.upsert_to_delta_video(popular_video_raw_df_filtered, video_data_delta_location)
@@ -92,11 +92,11 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         return None
     
     try:
-        popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME,"_*.json"))
+        popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME,"_*.json").replace("\\","/"))
         popular_comments_raw_df = read_obj.read_json(file_location=popular_comments_raw_data_location, multiline_flag=True, type_toggle="comment")
         popular_comments_raw_df_filtered = df_filter_obj.format_comments(popular_comments_raw_df)
 
-        comment_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_COMMENT_DELTA_TABLE_NAME))
+        comment_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_COMMENT_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark, comment_data_delta_location):
             logger.info(f"The delta table for comment data is present at the location {comment_data_delta_location}")
             write_obj.upsert_to_delta_comment(popular_comments_raw_df_filtered, comment_data_delta_location)
@@ -117,7 +117,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
 if __name__ == "__main__":
     try:
-        date = "2024-06"
+        date = "07-11-2025"
         flag = to_silver_pipeline(date=date)
         if flag:
             logger.info(f"The silver pipeline has completed successfully for the date {date}")

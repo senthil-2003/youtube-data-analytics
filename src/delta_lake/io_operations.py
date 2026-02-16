@@ -1,6 +1,6 @@
 from src.delta_lake.schema import Schema
 from pyspark.sql import SparkSession
-from pyspark.sql.connect.dataframe import DataFrame
+from pyspark.sql.dataframe import DataFrame
 from delta.tables import DeltaTable
 
 from src.utils.logger import get_logger

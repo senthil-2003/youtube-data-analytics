@@ -28,6 +28,7 @@ class get_env:
             self.STORAGE_CONNECTION_STRING = os.getenv('azure_storage_connection_string', None)
             self.LOG_CONNECTION_STRING = os.getenv('azure_log_connection_string', None)
             self.AZURE_ACCOUNT_NAME = os.getenv('account_name', None)
+            self.AZURE_STORAGE_ACCOUNT_KEY = os.getenv('azure_storage_account_key', None)
             
             # folder names
             self.RAW_FOLDER_NAME = os.getenv('raw_folder_name', None)

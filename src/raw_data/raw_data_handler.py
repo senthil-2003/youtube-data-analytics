@@ -4,10 +4,10 @@ from azure.storage.blob import ContainerClient
 from datetime import datetime
 from typing import Optional
 
-from utils.load_env import get_env
-from utils.logger import get_logger
-from data_retreival import get_data
-from azure_connector.data_lake import interact_adlsgen2
+from src.utils.load_env import get_env
+from src.utils.logger import setup_logger, get_logger
+from src.raw_data.data_retreival import get_data
+from src.raw_data.data_lake import interact_adlsgen2
 
 # --- loading import credentials ---
 cred = get_env()
@@ -22,7 +22,6 @@ LOG_CONNECTION_STRING = cred.LOG_CONNECTION_STRING
  
 # Folder names and blob paths
 RAW_FOLDER_NAME = cred.RAW_FOLDER_NAME
-PROCESSED_FOLDER_NAME = cred.PROCESSED_FOLDER_NAME
 UTIL_FOLDER_NAME = cred.UTIL_FOLDER_NAME
 I18N_FILE_NAME = cred.I18N_FILE_NAME
 CATEGORIES_FOLDER_NAME = cred.CATEGORIES_FOLDER_NAME
@@ -35,11 +34,16 @@ LOG_PATH = cred.LOG_PATH
 LOG_FILE_NAME = cred.LOG_FILE_NAME
 LOG_LEVEL = cred.LOG_LEVEL
 
-# --- logging ---
-logger = get_logger(log_path = LOG_PATH,
-                    log_file_name = LOG_FILE_NAME,
-                    log_level = LOG_LEVEL,
-                    azure_connection_string = LOG_CONNECTION_STRING)
+# --- Setup logger ---
+setup_logger(
+            root_logger_name=cred.APPLICATION_LOG_NAME,
+            log_path=LOG_PATH,
+            log_file_name=LOG_FILE_NAME,
+            log_level=LOG_LEVEL,
+            azure_connection_string=LOG_CONNECTION_STRING)
+
+# --- Get module-specific logger ---
+logger = get_logger(cred.APPLICATION_LOG_NAME,__name__)
 
 def upload_file(adls_obj: interact_adlsgen2, container_obj: ContainerClient, data: dict, fileName: str) -> bool:
     upload_flag = adls_obj.upload_blob(container_obj = container_obj,
@@ -123,7 +127,7 @@ def raw_data_collector():
     container_obj = azure_obj.get_container_obj(container_name = CONTAINER_NAME)
     
     # check i18n file
-    check_i1_flag = azure_obj.check_utils_files(container_name = CONTAINER_NAME,
+    check_i1_flag = azure_obj.check_files_exists(container_name = CONTAINER_NAME,
                                 blob_file_name = os.path.join(UTIL_FOLDER_NAME,I18N_FILE_NAME))
     
     new_i18n_regions_list = youtube_data.get_i18nregion_list()
@@ -141,8 +145,11 @@ def raw_data_collector():
             logger.info("uploaded the i18n country file to the azure container")
         
     else:
-        existing_i18n_regions_list = azure_obj.get_stored_i18n_code(container_obj = container_obj,
+        existing_i18n_regions_list = azure_obj.get_stored_raw_data(container_obj = container_obj,
                                                                     blob_name = i18n_file_path)
+        if existing_i18n_regions_list is None:
+            logger.warning("The existing i18n country code file is not found in the azure container and the new i18n country code file will be uploaded")
+        
         existing_i18n_country_codes = get_i18n_codes(i18n_data = existing_i18n_regions_list)
         missing_code = check_missing(existing_data = existing_i18n_country_codes, 
                                                       new_data = new_i18n_country_codes)
@@ -161,7 +168,7 @@ def raw_data_collector():
             
     # check video category file
     video_category_file_path = os.path.join(UTIL_FOLDER_NAME,CATEGORIES_FOLDER_NAME)
-    check_video_categories = azure_obj.check_utils_files(container_name = CONTAINER_NAME,
+    check_video_categories = azure_obj.check_files_exists(container_name = CONTAINER_NAME,
                                                          blob_file_name = video_category_file_path)
     
     if not check_video_categories:

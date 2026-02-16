@@ -2,9 +2,12 @@ from googleapiclient.discovery import build, Resource
 from google.auth.exceptions import MutualTLSChannelError
 from googleapiclient.errors import HttpError
 from typing import Optional
-import logging
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+from src.utils.load_env import get_env
+
+cred = get_env()
+logger = get_logger(cred.APPLICATION_LOG_NAME,__name__)
 
 class get_data:
     def __init__(self, api_key: str, max_result_limit: int):
@@ -107,4 +110,3 @@ if __name__ == "__main__":
                     max_result_limit=MAX_RESULT_LIMIT)
     
     inst.get_i18nregion_list()
-    

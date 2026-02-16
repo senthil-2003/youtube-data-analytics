@@ -1,8 +1,11 @@
 from azure.storage.blob import BlobServiceClient, ContainerClient
 import json
-import logging
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+from src.utils.load_env import get_env
+
+cred = get_env()
+logger = get_logger(cred.APPLICATION_LOG_NAME,__name__)
 
 class interact_adlsgen2:
     def __init__(self, storage_connection_cred: str):
@@ -33,7 +36,7 @@ class interact_adlsgen2:
             logger.error(f"There is an exception while building connection to the specified container because {e}")
             raise RuntimeError(f"There is an exception while building connection to the specified container because {e}")
         
-    def check_utils_files(self, container_name: str, blob_file_name: str) -> bool:
+    def check_files_exists(self, container_name: str, blob_file_name: str) -> bool:
         try:
             blob_obj = self.SERVICE_CLIENT.get_blob_client(container= container_name,
                                                         blob = blob_file_name)
@@ -78,9 +81,14 @@ class interact_adlsgen2:
             logger.error(f"There is an exception while listing all the objects in the specified container that starts with {name_starts_with} and the exception is {e}")
             raise RuntimeError(f"There is an exception while listing all the objects in the specified container that starts with {name_starts_with} and the exception is {e}")
         
-    def get_stored_i18n_code(self, container_obj: ContainerClient, blob_name: str) -> dict:
+    def get_stored_raw_data(self, container_obj: ContainerClient, blob_name: str) -> dict:
         try:
             blob_client = container_obj.get_blob_client(blob = blob_name)
+            
+            if not blob_client.exists():
+                logger.warning(f"The blob {blob_name} is not present in the given container")
+                return None
+            
             blob_data = blob_client.download_blob().readall()
             blob_utf = blob_data.decode('utf-8')
             json_data = json.loads(blob_utf)
@@ -89,6 +97,5 @@ class interact_adlsgen2:
             return json_data
         
         except Exception as e:
-            logging.error(f"Error reading the blob {blob_name}, because {e}")
+            logger.error(f"Error reading the blob {blob_name}, because {e}")
             raise RuntimeError(f"There is an exception while listing all the objects in the specified container {e}")
-        

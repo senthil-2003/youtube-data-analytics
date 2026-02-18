@@ -7,19 +7,57 @@ from typing import Optional
 from src.utils.load_env import get_env
 from src.delta_lake.io_operations import read_files, write_files
 from src.delta_lake.selection import Format
-from src.delta_lake.delta_lake_utils import check_file_exists, azure_link_builder, filter_excessive_rows
+from src.delta_lake.delta_lake_utils import check_file_exists, azure_link_builder
 from src.utils.logger import get_logger
 from src.utils.load_env import get_env
 
 cred = get_env()
 logger = get_logger(cred.APPLICATION_LOG_NAME,__name__)
 
-spark = SparkSession.builder\
-        .appName("silver_data_conversion")\
-        .config("spark.jars.packages", "io.delta:delta-spark_2.12:3.1.0")\
-        .config("spark.sql.extensions","io.delta.sql.DeltaSparkSessionExtension")\
-        .config("spark.sql.catalog.spark_catalog","org.apache.spark.sql.delta.catalog.DeltaCatalog")\
-        .getOrCreate()
+spark = (
+    SparkSession.builder
+    .appName("silver_data_conversion")
+
+    # =========================
+    # Delta Lake Configuration
+    # =========================
+    .config(
+        "spark.jars.packages",
+        ",".join([
+            "io.delta:delta-spark_2.12:3.1.0",
+            "org.apache.hadoop:hadoop-azure:3.3.4",
+            "com.azure:azure-storage-blob:12.22.0"
+        ])
+    )
+    .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
+    .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
+
+    # =========================
+    # ADLS Gen2 Configuration
+    # =========================
+    .config(
+        f"spark.hadoop.fs.azure.account.key.{cred.AZURE_ACCOUNT_NAME}.dfs.core.windows.net",
+        cred.AZURE_STORAGE_ACCOUNT_KEY
+    )
+
+    # Explicit ABFS filesystem
+    .config(
+        "spark.hadoop.fs.abfss.impl",
+        "org.apache.hadoop.fs.azurebfs.SecureAzureBlobFileSystem"
+    )
+    .config(
+        "spark.hadoop.fs.AbstractFileSystem.abfss.impl",
+        "org.apache.hadoop.fs.azurebfs.Abfs"
+    )
+
+    # =========================
+    # Performance
+    # =========================
+    .config("spark.sql.shuffle.partitions", "8")
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true")
+
+    .getOrCreate()
+)
         
 cred = get_env()
 read_obj = read_files(spark)
@@ -76,38 +114,41 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         
         video_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_VIDEO_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark,video_data_delta_location):
-            logger.info(f"The delta table for video data is present at the location {video_data_delta_location}")
-            write_obj.upsert_to_delta_video(popular_video_raw_df_filtered, video_data_delta_location)
-            logger.info(f"The delta table for video data has been updated successfully with the new data from the raw files")
+            logger.debug(f"The delta table for video data is present at the location {video_data_delta_location}")
+
+            write_obj.to_delta(df = popular_video_raw_df_filtered,
+                               file_location = video_data_delta_location,
+                               mode="append")
             
-            video_data_df = read_obj.read_delta(video_data_delta_location)
-            clean_video_df = filter_excessive_rows(date, video_data_df)
-            write_obj.to_delta_plain(clean_video_df, video_data_delta_location)
-            logger.info(f"The delta table for video data has been cleaned successfully to remove the excessive rows and only the relevant data is now present in the delta table")
+            logger.info(f"The delta table for video data has been appended successfully with the new data from the raw files")
         else:
-            write_obj.to_delta_plain(popular_video_raw_df_filtered, video_data_delta_location)
+            logger.debug(f"The delta table for video data is not present at the location {video_data_delta_location} and it will be created now")
+            write_obj.to_delta(df = popular_video_raw_df_filtered, 
+                               mode = "overwrite",
+                               file_location = video_data_delta_location)
+            
             logger.info(f"The delta table for video data has been created successfully at the location {video_data_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the video data and the error is {e}")
         return None
     
     try:
-        popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME,"_*.json").replace("\\","/"))
+        popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME+"_*.json").replace("\\","/"))
         popular_comments_raw_df = read_obj.read_json(file_location=popular_comments_raw_data_location, multiline_flag=True, type_toggle="comment")
         popular_comments_raw_df_filtered = df_filter_obj.format_comments(popular_comments_raw_df)
 
         comment_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_COMMENT_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark, comment_data_delta_location):
-            logger.info(f"The delta table for comment data is present at the location {comment_data_delta_location}")
-            write_obj.upsert_to_delta_comment(popular_comments_raw_df_filtered, comment_data_delta_location)
-            logger.info(f"The delta table for comment data has been updated successfully with the new data from the raw files")
-            
-            comment_data_delta_df = read_obj.read_delta(comment_data_delta_location)
-            clean_comment_df = filter_excessive_rows(date, comment_data_delta_df)
-            write_obj.to_delta_plain(clean_comment_df, comment_data_delta_location)
-            logger.info(f"The delta table for comment data has been cleaned successfully to remove the excessive rows and only the relevant data is now present in the delta table")
+            logger.debug(f"The delta table for comment data is present at the location {comment_data_delta_location}")
+            write_obj.to_delta(df = popular_comments_raw_df_filtered, 
+                               mode = "append", 
+                               file_location = comment_data_delta_location)
+            logger.info(f"The delta table for comment data has been appended successfully with the new data from the raw files")
         else:
-            write_obj.to_delta_plain(popular_comments_raw_df_filtered, comment_data_delta_location)
+            logger.debug(f"The delta table for comment data is not present at the location {comment_data_delta_location} and it will be created now")
+            write_obj.to_delta(df = popular_comments_raw_df_filtered, 
+                               mode = "overwrite", 
+                               file_location = comment_data_delta_location)
             logger.info(f"The delta table for comment data has been created successfully at the location {comment_data_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the comment data and the error is {e}")
@@ -127,4 +168,5 @@ if __name__ == "__main__":
         logger.error(f"An error occurred while running the silver pipeline and the error is {e}")
         raise RuntimeError(f"An error occurred while running the silver pipeline and the error is {e}") from e
     finally:
+        input("Press Enter to stop the Spark session...")
         spark.stop()

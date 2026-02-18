@@ -1,4 +1,4 @@
-from pyspark.sql.functions import col, explode, input_file_name, regexp_replace, element_at, split, get, map_keys, map_values, lit, expr, current_timestamp, date_format
+from pyspark.sql.functions import col, explode, input_file_name, regexp_replace, element_at, split, get, map_keys, map_values, expr, current_timestamp, date_format, current_date
 from pyspark.sql.dataframe import DataFrame
 
 from src.utils.logger import get_logger
@@ -39,7 +39,7 @@ class Format:
     @staticmethod
     def format_comments(df: DataFrame) -> DataFrame:
         try:
-            df_filtered = df.withColumn('Items',explode(col('Items'))).withColumn("region_code", element_at(split(input_file_name(),'/'),-2)).withColumn("most_popular_frequency",lit(1))\
+            df_filtered = df.withColumn('Items',explode(col('Items'))).withColumn("region_code", element_at(split(input_file_name(),'/'),-2))\
                 .select(
                 col("Items.snippet.topLevelComment.id").alias('Comment_ID'),
                 regexp_replace(col("Items.snippet.topLevelComment.snippet.authorDisplayName"), "^@", "").alias('Author_Display_Name'),
@@ -49,11 +49,10 @@ class Format:
                 col("Items.snippet.topLevelComment.snippet.likeCount").alias('Like_Count'),
                 col("Items.snippet.totalReplyCount").alias('Total_Replies_Count'),
                 col("Items.snippet.videoId").alias("video_id"),
-                col("region_code"),
-                col("most_popular_frequency")
+                col("region_code")
             )
 
-            df_time_added = df_filtered.withColumn("Ingestion_Time",date_format(current_timestamp(), "dd-MM-yyyy, HH:mm")).withColumn("most_popular_frequency",lit(1))
+            df_time_added = df_filtered.withColumn("Ingestion_Time",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date",current_date())
             return df_time_added
         
         except Exception as e:
@@ -63,7 +62,7 @@ class Format:
     @staticmethod
     def format_videos(df: DataFrame) -> DataFrame:
         try:
-            df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name()).withColumn("most_popular_frequency",lit(1))\
+            df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name())\
                           .select(
                                     col("items_exploded.id").alias("video_id"),
                                     col("items_exploded.snippet.categoryId").alias("CategoryId"),
@@ -83,8 +82,7 @@ class Format:
                                     col("items_exploded.paidProductPlacementDetails.hasPaidProductPlacement").alias("Paid_Product_Placement"),
                                     get(map_keys(col("items_exploded.contentDetails.contentRating")),0).alias("rating_type"),
                                     get(map_values(col("items_exploded.contentDetails.contentRating")),0).alias("rating_value"),
-                                    element_at(split(col("path"),'/'),-2).alias("region_code"),
-                                    col("most_popular_frequency")
+                                    element_at(split(col("path"),'/'),-2).alias("region_code")
                         )
                       
             df_normalized = df_filtered.withColumn("Content_Duration_seconds", 
@@ -94,9 +92,9 @@ class Format:
                                                             coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?([0-9]+)M', 1) AS BIGINT), 0) * 60 +
                                                             coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?(?:[0-9]+M)?([0-9]+)S', 1) AS BIGINT), 0)
                                                         """)).drop("Content_Duration")
-            
-            df_time_added = df_normalized.withColumn("Ingestion_Time",date_format(current_timestamp(), "dd-MM-yyyy, HH:mm"))
-                        
+
+            df_time_added = df_normalized.withColumn("Ingestion_Date",current_date()).withColumn("Ingestion_Time",date_format(current_timestamp(), "HH:mm:ss"))
+
             return df_time_added
         
         except Exception as e:

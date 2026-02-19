@@ -84,7 +84,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             
             i1_8n_df_raw = read_obj.read_json(file_location=i1_8n_raw_azure_location, multiline_flag=True, type_toggle="i18n")
             i1_8n_df = df_filter_obj.format_i18n_region(i1_8n_df_raw)
-            write_obj.to_delta_plain(i1_8n_df, i18n_delta_azure_location)  
+            write_obj.to_delta(i1_8n_df, mode="overwrite", categories="i18n", file_location=i18n_delta_azure_location)
             logger.info(f"The delta table for i18n data has been created successfully at the location {i18n_delta_azure_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the i18n data and the error is {e}")
@@ -101,7 +101,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
             video_categories_df_raw = read_obj.read_json(file_location=video_categories_raw_azure_location,multiline_flag=True, type_toggle="video_categories")
             video_categories_df = df_filter_obj.format_video_categories(video_categories_df_raw)
-            write_obj.to_delta_plain(video_categories_df, video_categories_delta_location)
+            write_obj.to_delta(video_categories_df, mode="overwrite", categories="categories", file_location=video_categories_delta_location)
             logger.info(f"The delta table for video categories data has been created successfully at the location {video_categories_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the video categories data and the error is {e}")
@@ -115,16 +115,17 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         video_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_VIDEO_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark,video_data_delta_location):
             logger.debug(f"The delta table for video data is present at the location {video_data_delta_location}")
-
-            write_obj.to_delta(df = popular_video_raw_df_filtered,
-                               file_location = video_data_delta_location,
-                               mode="append")
             
+            write_obj.merge(df = popular_video_raw_df_filtered,
+                            categories="video",
+                            old_delta_table_path = video_data_delta_location)
+
             logger.info(f"The delta table for video data has been appended successfully with the new data from the raw files")
         else:
             logger.debug(f"The delta table for video data is not present at the location {video_data_delta_location} and it will be created now")
             write_obj.to_delta(df = popular_video_raw_df_filtered, 
                                mode = "overwrite",
+                               categories="video",
                                file_location = video_data_delta_location)
             
             logger.info(f"The delta table for video data has been created successfully at the location {video_data_delta_location}")
@@ -140,14 +141,17 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
         comment_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_COMMENT_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark, comment_data_delta_location):
             logger.debug(f"The delta table for comment data is present at the location {comment_data_delta_location}")
-            write_obj.to_delta(df = popular_comments_raw_df_filtered, 
-                               mode = "append", 
-                               file_location = comment_data_delta_location)
+
+            write_obj.merge(df = popular_comments_raw_df_filtered,
+                            categories="comment",
+                            old_delta_table_path = comment_data_delta_location)
+            
             logger.info(f"The delta table for comment data has been appended successfully with the new data from the raw files")
         else:
             logger.debug(f"The delta table for comment data is not present at the location {comment_data_delta_location} and it will be created now")
             write_obj.to_delta(df = popular_comments_raw_df_filtered, 
                                mode = "overwrite", 
+                               categories="comment",
                                file_location = comment_data_delta_location)
             logger.info(f"The delta table for comment data has been created successfully at the location {comment_data_delta_location}")
     except Exception as e:

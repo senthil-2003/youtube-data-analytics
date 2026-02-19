@@ -1,4 +1,4 @@
-from pyspark.sql.functions import col, explode, input_file_name, regexp_replace, element_at, split, get, map_keys, map_values, expr, current_timestamp, date_format, current_date
+from pyspark.sql.functions import col, explode, input_file_name, regexp_replace, element_at, split, map_keys, map_values, expr, current_timestamp, date_format, current_date
 from pyspark.sql.dataframe import DataFrame
 
 from src.utils.logger import get_logger
@@ -80,8 +80,8 @@ class Format:
                                     col("items_exploded.statistics.likeCount").cast("long").alias("Like_Count"),
                                     col("items_exploded.statistics.commentCount").alias("Comment_Count").cast("long"),
                                     col("items_exploded.paidProductPlacementDetails.hasPaidProductPlacement").alias("Paid_Product_Placement"),
-                                    get(map_keys(col("items_exploded.contentDetails.contentRating")),0).alias("rating_type"),
-                                    get(map_values(col("items_exploded.contentDetails.contentRating")),0).alias("rating_value"),
+                                    element_at(map_keys(col("items_exploded.contentDetails.contentRating")),1).alias("rating_type"),
+                                    element_at(map_values(col("items_exploded.contentDetails.contentRating")),1).alias("rating_value"),
                                     element_at(split(col("path"),'/'),-2).alias("region_code")
                         )
                       

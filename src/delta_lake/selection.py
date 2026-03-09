@@ -1,4 +1,6 @@
-from pyspark.sql.functions import col, explode, input_file_name, regexp_replace, element_at, split, map_keys, map_values, expr, current_timestamp, date_format, current_date
+from pyspark.sql.functions import ( col, explode, input_file_name, regexp_replace, element_at, 
+                                    split, map_keys, map_values, expr, current_timestamp, date_format, 
+                                    current_date, to_timestamp, to_date )
 from pyspark.sql.dataframe import DataFrame
 
 from src.utils.logger import get_logger
@@ -13,9 +15,9 @@ class Format:
         try:
             df_selected = df.withColumn("items_exploded", explode(col("items"))).withColumn("region_code", element_at(split(input_file_name(),'/'),-1))
             df_filtered = df_selected.select(
-                col("items_exploded.id").alias("category_id"),
+                col("items_exploded.id").alias("category_id").cast("int"),
                 col("items_exploded.snippet.title").alias("category_title"),
-                element_at(split(col("region_code"),"."),0).alias("region_code")
+                element_at(split(col("region_code"),"\\."),1).alias("region_code")
             )
             return df_filtered
         
@@ -39,20 +41,19 @@ class Format:
     @staticmethod
     def format_comments(df: DataFrame) -> DataFrame:
         try:
-            df_filtered = df.withColumn('Items',explode(col('Items'))).withColumn("region_code", element_at(split(input_file_name(),'/'),-2))\
+            df_filtered = df.withColumn('Items',explode(col('Items'))).withColumn("published_timestamp_utc",to_timestamp(col("Items.snippet.topLevelComment.snippet.publishedAt")).alias("Published_Timestamp_UTC"))\
                 .select(
                 col("Items.snippet.topLevelComment.id").alias('Comment_ID'),
                 regexp_replace(col("Items.snippet.topLevelComment.snippet.authorDisplayName"), "^@", "").alias('Author_Display_Name'),
                 col("Items.snippet.topLevelComment.snippet.channelId").alias('Content_Channel_ID'),
                 col("Items.snippet.topLevelComment.snippet.textOriginal").alias('Author_Comment_Original'),
-                col("Items.snippet.topLevelComment.snippet.publishedAt").alias('Published_Time'),
+                to_date(col("published_timestamp_utc")).alias("Published_Date_UTC"),
+                date_format(col("published_timestamp_utc"), "HH:mm:ss").alias("Published_Time_UTC"),
                 col("Items.snippet.topLevelComment.snippet.likeCount").alias('Like_Count'),
-                col("Items.snippet.totalReplyCount").alias('Total_Replies_Count'),
-                col("Items.snippet.videoId").alias("video_id"),
-                col("region_code")
+                col("Items.snippet.totalReplyCount").alias('Total_Replies_Count')
             )
 
-            df_time_added = df_filtered.withColumn("Ingestion_Time",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date",current_date())
+            df_time_added = df_filtered.withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date_UTC",current_date())
             return df_time_added
         
         except Exception as e:
@@ -62,11 +63,12 @@ class Format:
     @staticmethod
     def format_videos(df: DataFrame) -> DataFrame:
         try:
-            df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name())\
+            df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name()).withColumn("published_timestamp_utc",to_timestamp(col("items_exploded.snippet.publishedAt")).alias("Published_Time_UTC"))\
                           .select(
                                     col("items_exploded.id").alias("video_id"),
                                     col("items_exploded.snippet.categoryId").alias("CategoryId"),
-                                    col("items_exploded.snippet.publishedAt").alias("Published_Time"),
+                                    to_date(col("published_timestamp_utc")).alias("Published_Date_UTC"),
+                                    date_format(col("published_timestamp_utc"), "HH:mm:ss").alias("Published_Time_UTC"),
                                     col("items_exploded.snippet.channelId").alias("Channel_ID"),
                                     col("items_exploded.snippet.title").alias("Video_title"),
                                     col("items_exploded.snippet.channelTitle").alias("Channel_Name"),
@@ -87,13 +89,13 @@ class Format:
                       
             df_normalized = df_filtered.withColumn("Content_Duration_seconds", 
                                                 expr("""
-                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)([0-9]+)D', 1) AS BIGINT), 0) * 86400 +
-                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T([0-9]+)H', 1) AS BIGINT), 0) * 3600 +
-                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?([0-9]+)M', 1) AS BIGINT), 0) * 60 +
-                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?(?:[0-9]+M)?([0-9]+)S', 1) AS BIGINT), 0)
+                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)([0-9]+)D', 1) AS INT), 0) * 86400 +
+                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T([0-9]+)H', 1) AS INT), 0) * 3600 +
+                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?([0-9]+)M', 1) AS INT), 0) * 60 +
+                                                            coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?(?:[0-9]+M)?([0-9]+)S', 1) AS INT), 0)
                                                         """)).drop("Content_Duration")
 
-            df_time_added = df_normalized.withColumn("Ingestion_Date",current_date()).withColumn("Ingestion_Time",date_format(current_timestamp(), "HH:mm:ss"))
+            df_time_added = df_normalized.withColumn("Ingestion_Date_UTC",current_date()).withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss"))
 
             return df_time_added
         

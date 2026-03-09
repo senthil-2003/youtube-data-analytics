@@ -59,7 +59,7 @@ class write_files:
         
         try:
             if categories == "video" or categories == "comment":
-                df.write.format("delta").mode(mode).partitionBy("Ingestion_Date").save(file_location)
+                df.write.format("delta").mode(mode).partitionBy("Ingestion_Date_UTC").save(file_location)
             else:
                 df.write.format("delta").mode(mode).save(file_location)
         except Exception as e:
@@ -70,9 +70,9 @@ class write_files:
         old_delta = DeltaTable.forPath(self.spark, old_delta_table_path).alias("src")
 
         if categories == "video":
-            merge_condition = "src.video_id = trg.video_id AND src.region_code = trg.region_code AND src.Ingestion_Date = trg.Ingestion_Date"
+            merge_condition = "src.video_id = trg.video_id AND src.region_code = trg.region_code AND src.Ingestion_Date_UTC = trg.Ingestion_Date_UTC"
         elif categories == "comment":
-            merge_condition = "src.Comment_ID = trg.Comment_ID AND src.video_id = trg.video_id AND src.region_code = trg.region_code AND src.Ingestion_Date = trg.Ingestion_Date"
+            merge_condition = "src.Comment_ID = trg.Comment_ID AND src.Ingestion_Date_UTC = trg.Ingestion_Date_UTC"
         else:
             logger.error(f"Invalid category for merging delta table: {categories}.")
             raise ValueError(f"Invalid category for merging delta table: {categories}.")

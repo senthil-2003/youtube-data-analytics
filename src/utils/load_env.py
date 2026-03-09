@@ -55,6 +55,20 @@ class get_env:
             self.LOG_FILE_NAME = os.getenv('log_file_name', None)
             self.LOG_LEVEL = os.getenv('logging_level', None)
             self.APPLICATION_LOG_NAME = os.getenv('app_logger_name', None)
+            
+            # database credentials
+            self.VIDEO_CATEGORIES_TABLE_NAME = os.getenv('video_categories_table_name', None)
+            self.VIDEO_TABLE_NAME = os.getenv('video_table_name', None)
+            self.VIDEO_STATS_TABLE_NAME = os.getenv('video_stats_table_name', None)
+            self.COMMENT_TABLE_NAME = os.getenv('comment_table_name', None)
+            self.I18N_COUNTRIES_TABLE_NAME = os.getenv('i18n_countries_table_name', None)
+            
+            # database connection details
+            self.DB_NAME = os.getenv('db_name', None)
+            self.DB_HOSTNAME = os.getenv('db_host_name', None)
+            self.DB_USER = os.getenv('db_user', None)
+            self.DB_PASS = os.getenv('db_pass', None)
+
             self.validate()
             
         except Exception as e:

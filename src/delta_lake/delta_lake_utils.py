@@ -21,15 +21,3 @@ def check_file_exists(spark: SparkSession, file_location: str) -> bool:
     except Exception as e:
         logger.error(f"Error checking file existence at {file_location}: {e}")
         return False
-
-def azure_link_builder(container_name: str, account_name: str, location: str) -> str:
-    try:
-        if not container_name or not account_name or not location:
-            logger.error("Container name, account name and location must be provided to build the azure link")
-            raise ValueError("Container name, account name and location must be provided to build the azure link")
-        
-        link = f"abfss://{container_name}@{account_name}.dfs.core.windows.net/{location}"
-        return link
-    except Exception as e:
-        logger.critical(f"Error building Azure link with container: {container_name}, account: {account_name}, location: {location}. Error: {e}")
-        raise RuntimeError(f"Error building Azure link with container: {container_name}, account: {account_name}, location: {location}. Error: {e}") from e

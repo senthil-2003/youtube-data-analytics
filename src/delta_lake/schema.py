@@ -21,8 +21,7 @@ class Schema:
                                                                                     StructField("likeCount", IntegerType(), False)
                                                                                 ]))
                                                                             ])),
-                                                            StructField("totalReplyCount", IntegerType(), False),
-                                                            StructField("videoId", StringType(), False)
+                                                            StructField("totalReplyCount", IntegerType(), False)
                                                                     ]))
                                                         ]))
                                                 )

@@ -1,4 +1,3 @@
-# check for parallel processing
 import os
 from azure.storage.blob import ContainerClient
 from datetime import datetime

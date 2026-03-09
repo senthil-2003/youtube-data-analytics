@@ -7,7 +7,8 @@ from typing import Optional
 from src.utils.load_env import get_env
 from src.delta_lake.io_operations import read_files, write_files
 from src.delta_lake.selection import Format
-from src.delta_lake.delta_lake_utils import check_file_exists, azure_link_builder
+from src.delta_lake.delta_lake_utils import check_file_exists
+from src.utils.common_utils import azure_link_builder
 from src.utils.logger import get_logger
 from src.utils.load_env import get_env
 
@@ -65,7 +66,6 @@ write_obj = write_files(spark)
 df_filter_obj = Format()
 
 def to_silver_pipeline(date: str)-> Optional[bool]:
-    
     try:
         datetime.strptime(date, "%d-%m-%Y")
         logger.info(f"The date {date} is in the correct format (dd-mm-yyyy)")
@@ -75,7 +75,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
     try: 
         i18n_delta_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME).replace("\\","/"))
-        if not check_file_exists(spark, i18n_delta_azure_location):
+        if not DeltaTable.isDeltaTable(spark, i18n_delta_azure_location):
             logger.info(f"The delta table for i18n data is not present in the provided location {i18n_delta_azure_location} and the pipeline will start processing the raw data to create the delta table")
             i1_8n_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.I18N_FILE_NAME).replace("\\","/"))
             if not check_file_exists(spark, i1_8n_raw_azure_location):
@@ -92,7 +92,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
     
     try:
         video_categories_delta_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME,os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_VIDEO_CATEGORIES_DELTA_TABLE_NAME).replace("\\","/"))
-        if not check_file_exists(spark, video_categories_delta_location):
+        if not DeltaTable.isDeltaTable(spark, video_categories_delta_location):
             logger.info(f"The delta table for video categories data is not present in the provided location {video_categories_delta_location} and the pipeline will start processing the raw data to create the delta table")
             video_categories_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.CATEGORIES_FOLDER_NAME).replace("\\","/"))
             if not check_file_exists(spark, video_categories_raw_azure_location):
@@ -101,6 +101,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
             video_categories_df_raw = read_obj.read_json(file_location=video_categories_raw_azure_location,multiline_flag=True, type_toggle="video_categories")
             video_categories_df = df_filter_obj.format_video_categories(video_categories_df_raw)
+
             write_obj.to_delta(video_categories_df, mode="overwrite", categories="categories", file_location=video_categories_delta_location)
             logger.info(f"The delta table for video categories data has been created successfully at the location {video_categories_delta_location}")
     except Exception as e:
@@ -162,7 +163,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
 if __name__ == "__main__":
     try:
-        date = "07-11-2025"
+        date = "07-03-2026"
         flag = to_silver_pipeline(date=date)
         if flag:
             logger.info(f"The silver pipeline has completed successfully for the date {date}")

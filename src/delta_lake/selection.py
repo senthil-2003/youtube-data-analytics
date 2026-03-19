@@ -1,6 +1,7 @@
 from pyspark.sql.functions import ( col, explode, input_file_name, regexp_replace, element_at, 
                                     split, map_keys, map_values, expr, current_timestamp, date_format, 
-                                    current_date, to_timestamp, to_date )
+                                    current_date, to_timestamp, to_date, desc, row_number)
+from pyspark.sql.window import Window
 from pyspark.sql.dataframe import DataFrame
 
 from src.utils.logger import get_logger
@@ -50,12 +51,18 @@ class Format:
                 to_date(col("published_timestamp_utc")).alias("Published_Date_UTC"),
                 date_format(col("published_timestamp_utc"), "HH:mm:ss").alias("Published_Time_UTC"),
                 col("Items.snippet.topLevelComment.snippet.likeCount").alias('Like_Count'),
-                col("Items.snippet.totalReplyCount").alias('Total_Replies_Count')
+                col("Items.snippet.totalReplyCount").alias('Total_Replies_Count'),
+                col("Items.snippet.videoId").alias('video_id')
             )
 
             df_time_added = df_filtered.withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date_UTC",current_date())
-            return df_time_added
-        
+
+            # remove the duplicate comments inside same batch by filtering the comments with highest like.
+            window_q = Window.partitionBy("Comment_ID").orderBy(desc(col("Like_Count")))
+            df_dedup = df_time_added.withColumn("rn",row_number().over(window_q)).filter(col("rn") == 1).drop("rn")
+            
+            return df_dedup
+
         except Exception as e:
             logger.error(f"Error formatting comments data: {e}")
             raise RuntimeError(f"An error occurred while formatting the comments data and the error is {e}") from e
@@ -66,7 +73,7 @@ class Format:
             df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name()).withColumn("published_timestamp_utc",to_timestamp(col("items_exploded.snippet.publishedAt")).alias("Published_Time_UTC"))\
                           .select(
                                     col("items_exploded.id").alias("video_id"),
-                                    col("items_exploded.snippet.categoryId").alias("CategoryId"),
+                                    col("items_exploded.snippet.categoryId").alias("category_id"),
                                     to_date(col("published_timestamp_utc")).alias("Published_Date_UTC"),
                                     date_format(col("published_timestamp_utc"), "HH:mm:ss").alias("Published_Time_UTC"),
                                     col("items_exploded.snippet.channelId").alias("Channel_ID"),

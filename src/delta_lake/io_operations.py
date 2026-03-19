@@ -72,7 +72,7 @@ class write_files:
         if categories == "video":
             merge_condition = "src.video_id = trg.video_id AND src.region_code = trg.region_code AND src.Ingestion_Date_UTC = trg.Ingestion_Date_UTC"
         elif categories == "comment":
-            merge_condition = "src.Comment_ID = trg.Comment_ID AND src.Ingestion_Date_UTC = trg.Ingestion_Date_UTC"
+            merge_condition = "src.Comment_ID = trg.Comment_ID"
         else:
             logger.error(f"Invalid category for merging delta table: {categories}.")
             raise ValueError(f"Invalid category for merging delta table: {categories}.")
@@ -80,4 +80,4 @@ class write_files:
         old_delta.merge(
             df.alias("trg"),
             merge_condition
-        ).whenNotMatchedInsertAll().execute()
+        ).whenMatchedUpdateAll().whenNotMatchedInsertAll().execute()

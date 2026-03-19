@@ -68,6 +68,7 @@ class get_env:
             self.DB_HOSTNAME = os.getenv('db_host_name', None)
             self.DB_USER = os.getenv('db_user', None)
             self.DB_PASS = os.getenv('db_pass', None)
+            self.DB_PORT = os.getenv('db_port', None)
 
             self.validate()
             

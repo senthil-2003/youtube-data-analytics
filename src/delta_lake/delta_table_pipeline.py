@@ -9,10 +9,18 @@ from src.delta_lake.io_operations import read_files, write_files
 from src.delta_lake.selection import Format
 from src.delta_lake.delta_lake_utils import check_file_exists
 from src.utils.common_utils import azure_link_builder
-from src.utils.logger import get_logger
+from src.utils.logger import get_logger,setup_logger
 from src.utils.load_env import get_env
 
 cred = get_env()
+
+setup_logger(
+    root_logger_name=cred.APPLICATION_LOG_NAME,
+    log_path = cred.LOG_PATH,
+    log_file_name = cred.LOG_FILE_NAME,
+    log_level = cred.LOG_LEVEL,
+    azure_connection_string = cred.LOG_CONNECTION_STRING
+) 
 logger = get_logger(cred.APPLICATION_LOG_NAME,__name__)
 
 spark = (
@@ -84,7 +92,11 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             
             i1_8n_df_raw = read_obj.read_json(file_location=i1_8n_raw_azure_location, multiline_flag=True, type_toggle="i18n")
             i1_8n_df = df_filter_obj.format_i18n_region(i1_8n_df_raw)
-            write_obj.to_delta(i1_8n_df, mode="overwrite", categories="i18n", file_location=i18n_delta_azure_location)
+            
+            global_region_row = spark.createDataFrame([("GL", "Global")], ["region_code", "region_name"])
+            i1_8n_df_final = i1_8n_df.unionByName(global_region_row)
+            
+            write_obj.to_delta(i1_8n_df_final, mode="overwrite", categories="i18n", file_location=i18n_delta_azure_location)
             logger.info(f"The delta table for i18n data has been created successfully at the location {i18n_delta_azure_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the i18n data and the error is {e}")
@@ -163,7 +175,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
 
 if __name__ == "__main__":
     try:
-        date = "07-03-2026"
+        date = "14-03-2026"
         flag = to_silver_pipeline(date=date)
         if flag:
             logger.info(f"The silver pipeline has completed successfully for the date {date}")
@@ -173,5 +185,4 @@ if __name__ == "__main__":
         logger.error(f"An error occurred while running the silver pipeline and the error is {e}")
         raise RuntimeError(f"An error occurred while running the silver pipeline and the error is {e}") from e
     finally:
-        input("Press Enter to stop the Spark session...")
         spark.stop()

@@ -56,7 +56,7 @@ def get_video_and_comment_data(azure_object: interact_adlsgen2, youtube_obj: get
                                                             region_code = region_code)
     
     date = datetime.today().strftime('%d-%m-%Y')
-    root_folder_name = os.path.join(RAW_FOLDER_NAME, date, region_code if region_code else "global")
+    root_folder_name = os.path.join(RAW_FOLDER_NAME, date, region_code if region_code else "GL") # global region code is GL (This is just for naming convention, it is not an official code)
     file_name = os.path.join(root_folder_name,video_file_name)
     
     flag = upload_file(adls_obj = azure_object, 

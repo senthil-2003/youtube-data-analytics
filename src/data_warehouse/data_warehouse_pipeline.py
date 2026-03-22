@@ -5,7 +5,7 @@ from delta.tables import DeltaTable
 from src.utils.logger import get_logger,setup_logger
 from src.utils.load_env import get_env
 from src.data_warehouse.io_operations import check_table_exists, check_table_contents, read_data, write_data
-from src.utils.common_utils import azure_link_builder
+from src.utils.link_builder import azure_link_builder
 from src.data_warehouse.join_operation import joinTables
 from src.data_warehouse.access_azure_sql import conn
 
@@ -52,7 +52,7 @@ conn_obj = conn(
 read_obj = read_data(spark, conn_obj)
 write_obj = write_data(spark, conn_obj)
 
-def to_sql_pipeline(date: str):
+def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
     
     # check for any missing tables in the database
     failed_tables = []

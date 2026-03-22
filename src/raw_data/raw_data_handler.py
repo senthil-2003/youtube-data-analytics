@@ -51,11 +51,10 @@ def upload_file(adls_obj: interact_adlsgen2, container_obj: ContainerClient, dat
     
     return upload_flag
 
-def get_video_and_comment_data(azure_object: interact_adlsgen2, youtube_obj: get_data, containerObj: ContainerClient, max_result_limit: int, region_code: Optional[str], video_file_name: str, comments_file_name: str) -> bool:
+def get_video_and_comment_data(date: str, azure_object: interact_adlsgen2, youtube_obj: get_data, containerObj: ContainerClient, max_result_limit: int, region_code: Optional[str], video_file_name: str, comments_file_name: str) -> bool:
     get_popular_video = youtube_obj.get_most_popular_videos(max_result_limit = max_result_limit,
                                                             region_code = region_code)
     
-    date = datetime.today().strftime('%d-%m-%Y')
     root_folder_name = os.path.join(RAW_FOLDER_NAME, date, region_code if region_code else "GL") # global region code is GL (This is just for naming convention, it is not an official code)
     file_name = os.path.join(root_folder_name,video_file_name)
     
@@ -113,7 +112,7 @@ def get_video_categories(video_data: list[str]) -> list[str]:
     
     return result
 
-def raw_data_collector():
+def raw_data_collector(date: str = os.getenv("RUN_DATE")):
     
     logger.info(" --------------------------  Application started  ----------------------------")
     
@@ -217,7 +216,9 @@ def raw_data_collector():
             logger.info("The videocategories for all regions is already present")
     
     # get top video and comment data, global and all countries
-    global_flag = get_video_and_comment_data(azure_object = azure_obj,
+    global_flag = get_video_and_comment_data(
+                                    date = date,
+                                    azure_object = azure_obj,
                                     youtube_obj = youtube_data,
                                     containerObj = container_obj,
                                     max_result_limit = MAX_RESULT_LIMIT,
@@ -228,7 +229,9 @@ def raw_data_collector():
         logger.info(f"successfully inserted the video and comments for global region")
 
     for code in new_i18n_country_codes:
-        flag = get_video_and_comment_data(azure_object = azure_obj,
+        flag = get_video_and_comment_data(
+                                    date = date,
+                                    azure_object = azure_obj,
                                     youtube_obj = youtube_data,
                                     containerObj = container_obj,
                                     max_result_limit = MAX_RESULT_LIMIT,
@@ -242,4 +245,5 @@ def raw_data_collector():
     logger.info(" ------------ Application ended successfully ----------------")
             
 if __name__ == "__main__":
-    raw_data_collector()
+    date = datetime.today().strftime('%Y-%m-%d')
+    raw_data_collector(date = date)

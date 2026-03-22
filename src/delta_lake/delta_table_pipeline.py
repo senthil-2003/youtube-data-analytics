@@ -8,7 +8,7 @@ from src.utils.load_env import get_env
 from src.delta_lake.io_operations import read_files, write_files
 from src.delta_lake.selection import Format
 from src.delta_lake.delta_lake_utils import check_file_exists
-from src.utils.common_utils import azure_link_builder
+from src.utils.link_builder import azure_link_builder
 from src.utils.logger import get_logger,setup_logger
 from src.utils.load_env import get_env
 
@@ -73,7 +73,7 @@ read_obj = read_files(spark)
 write_obj = write_files(spark)
 df_filter_obj = Format()
 
-def to_silver_pipeline(date: str)-> Optional[bool]:
+def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
     try:
         datetime.strptime(date, "%d-%m-%Y")
         logger.info(f"The date {date} is in the correct format (dd-mm-yyyy)")
@@ -100,7 +100,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             logger.info(f"The delta table for i18n data has been created successfully at the location {i18n_delta_azure_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the i18n data and the error is {e}")
-        return None
+        raise
     
     try:
         video_categories_delta_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME,os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_VIDEO_CATEGORIES_DELTA_TABLE_NAME).replace("\\","/"))
@@ -118,7 +118,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             logger.info(f"The delta table for video categories data has been created successfully at the location {video_categories_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the video categories data and the error is {e}")
-        return None
+        raise
             
     try:
         popular_video_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_VIDEO_FILE_NAME).replace("\\","/"))
@@ -144,7 +144,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             logger.info(f"The delta table for video data has been created successfully at the location {video_data_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the video data and the error is {e}")
-        return None
+        raise
     
     try:
         popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME+"_*.json").replace("\\","/"))
@@ -169,9 +169,7 @@ def to_silver_pipeline(date: str)-> Optional[bool]:
             logger.info(f"The delta table for comment data has been created successfully at the location {comment_data_delta_location}")
     except Exception as e:
         logger.error(f"An error occurred while processing the comment data and the error is {e}")
-        return None
-    
-    return True
+        raise
 
 if __name__ == "__main__":
     try:
@@ -183,6 +181,6 @@ if __name__ == "__main__":
             logger.warning(f"The silver pipeline has completed with issues for the date {date}")
     except Exception as e:
         logger.error(f"An error occurred while running the silver pipeline and the error is {e}")
-        raise RuntimeError(f"An error occurred while running the silver pipeline and the error is {e}") from e
+        raise
     finally:
         spark.stop()

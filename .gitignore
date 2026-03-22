@@ -2,3 +2,4 @@ venv
 .env
 tmp
 **/__pycache__
+assets/youtube_data_analytics_pipeline_erd.png

@@ -133,6 +133,11 @@ def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
     
     # retrieve the video stats for each video record from main popular video delta dataframe and then write the data to the respective sql table.
     popular_video_stats_delta_df = popular_video_delta_df.select("view_count", "like_count", "comment_count", "region_code", "ingestion_date_utc", "ingestion_time_utc","video_id")
+    
+    #filtering existing data
+    existing_video_stats_sql_df = read_obj.read_sql_table(cred.VIDEO_STATS_TABLE_NAME).select("video_id", "ingestion_date_utc","region_code")
+    popular_video_stats_delta_df = joinTables(popular_video_stats_delta_df,existing_video_stats_sql_df, "left_anti", ["video_id","ingestion_date_utc","region_code"])
+
     write_obj.write_sql_table(table_name=cred.VIDEO_STATS_TABLE_NAME,
                               mode="append",
                               dataframe=popular_video_stats_delta_df)
@@ -150,6 +155,11 @@ def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
     comments_delta_df = read_obj.read_delta_table(comments_delta_table_location)
     comments_delta_df = comments_delta_df.filter(comments_delta_df['ingestion_date_utc'] == date)
     comments_delta_df_final = comments_delta_df.select("comment_id","author_display_name","content_channel_id","author_comment_original","published_date_utc","published_time_utc","like_count","total_replies_count", "video_id", "ingestion_date_utc","ingestion_time_utc")
+   
+    # filtering existing data
+    existing_comments_sql_df = read_obj.read_sql_table(cred.COMMENT_TABLE_NAME).select("comment_id")
+    comments_delta_df_final = joinTables(comments_delta_df_final,existing_comments_sql_df,"left_anti", ["comment_id"])
+    
     write_obj.write_sql_table(table_name=cred.COMMENT_TABLE_NAME,
                                 mode="append",
                                 dataframe=comments_delta_df_final)

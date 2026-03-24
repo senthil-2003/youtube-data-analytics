@@ -1,4 +1,3 @@
-
 class conn:
     def __init__(self, host_name: str, database_name: str, username: str, password: str, port: str, driver: str = "com.mysql.cj.jdbc.Driver"):
         self.host_name = host_name

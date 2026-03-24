@@ -58,6 +58,10 @@ def get_video_and_comment_data(date: str, azure_object: interact_adlsgen2, youtu
     root_folder_name = os.path.join(RAW_FOLDER_NAME, date, region_code if region_code else "GL") # global region code is GL (This is just for naming convention, it is not an official code)
     file_name = os.path.join(root_folder_name,video_file_name)
     
+    if azure_object.check_files_exists(container_name= CONTAINER_NAME, blob_file_name=file_name):
+        logger.info(f"The popular video file for the region {region_code if region_code else 'global'} and date {date} is already exists in the container")
+        return True
+    
     flag = upload_file(adls_obj = azure_object, 
                        container_obj = containerObj, 
                        data = get_popular_video, 

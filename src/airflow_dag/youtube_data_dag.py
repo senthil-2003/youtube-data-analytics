@@ -1,4 +1,5 @@
 from airflow.sdk import dag, task
+from airflow.models import Variable
 from datetime import datetime, timedelta
 
 default_args = {
@@ -9,13 +10,7 @@ default_args = {
     'retry_delay' : timedelta(minutes=1),
     
     # timeouts
-    'execution_timeout' : timedelta(minutes=10),
-    
-    # # email notifications
-    # "email" : ["dev.senthilr@gmail.com"],
-    # "email_on_failure" : True,
-    # "email_on_retry" : False,
-    # "email_on_success" : True
+    'execution_timeout' : timedelta(minutes=10)
 }
 
 @dag(dag_id="youtube_etl_dag", 
@@ -23,29 +18,36 @@ default_args = {
      schedule = "@daily", 
      default_args = default_args, 
      catchup=False,
-    dagrun_timeout = timedelta(minutes=60), # in minutes
+    dagrun_timeout = timedelta(minutes=60),
 )
 def youtube_data_pipeline_dag():
+
+    env_path = Variable.get("youtube_data_pipeline_env_path")
+    base_scripts_path = Variable.get("youtube_data_pipeline_base_scripts_path")
+    email_id = Variable.get("youtube_data_pipeline_email_notification").split(",")
     
-    env_path = "/home/senth/youtube_analytic_pipeline_project/youtube-data-analytics/venv/bin/python"
-    base_scripts_path = "/home/senth/youtube_analytic_pipeline_project/youtube-data-analytics/src"
+    email_args = {
+        "email" : email_id,
+        "email_on_failure" : True,
+        "email_on_retry" : False
+    }
     
-    @task.bash(env= {"RUN_DATE": "{{ ds }}"})
+    @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def collect_raw_data():
         file_path = "raw_data/raw_data_handler.py"
         return f"{env_path} {base_scripts_path}/{file_path}"
-    
-    @task.bash(env= {"RUN_DATE": "{{ ds }}"})
+
+    @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def convert_to_delta_table():
         file_path = "delta_lake/delta_table_pipeline.py"
         return f"{env_path} {base_scripts_path}/{file_path}"
-        
-    @task.bash(env= {"RUN_DATE": "{{ ds }}"})
+
+    @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def convert_to_sql():
         file_path = "data_warehouse/data_warehouse_pipeline.py"
         return f"{env_path} {base_scripts_path}/{file_path}"
 
-    @task.bash(env= {"RUN_DATE": "{{ ds }}"})
+    @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def write_to_kaggle():
         file_path = "kaggle/kaggle_pipeline.py"
         return f"{env_path} {base_scripts_path}/{file_path}"

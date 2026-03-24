@@ -2,7 +2,6 @@ from pyspark.sql import SparkSession
 import os
 from delta.tables import DeltaTable
 from datetime import datetime
-from typing import Optional
 
 from src.utils.load_env import get_env
 from src.delta_lake.io_operations import read_files, write_files
@@ -10,7 +9,6 @@ from src.delta_lake.selection import Format
 from src.delta_lake.delta_lake_utils import check_file_exists
 from src.utils.link_builder import azure_link_builder
 from src.utils.logger import get_logger,setup_logger
-from src.utils.load_env import get_env
 
 cred = get_env()
 
@@ -68,14 +66,13 @@ spark = (
     .getOrCreate()
 )
         
-cred = get_env()
 read_obj = read_files(spark)
 write_obj = write_files(spark)
 df_filter_obj = Format()
 
 def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
     try:
-        datetime.strptime(date, "%d-%m-%Y")
+        datetime.strptime(date, "%Y-%m-%d")
         logger.info(f"The date {date} is in the correct format (dd-mm-yyyy)")
     except ValueError:
         logger.error(f"The date {date} is not in the correct format (dd-mm-yyyy)")

@@ -1,6 +1,5 @@
 import os
 from azure.storage.blob import ContainerClient
-from datetime import datetime
 from typing import Optional
 
 from src.utils.load_env import get_env
@@ -249,5 +248,5 @@ def raw_data_collector(date: str = os.getenv("RUN_DATE")):
     logger.info(" ------------ Application ended successfully ----------------")
             
 if __name__ == "__main__":
-    date = datetime.today().strftime('%Y-%m-%d')
-    raw_data_collector(date = date)
+    # date = datetime.today().strftime('%Y-%m-%d')
+    raw_data_collector()

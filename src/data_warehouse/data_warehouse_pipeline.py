@@ -167,7 +167,7 @@ def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
     logger.info("pipeline to convert delta table to sql table completed successfully.")
     
 if __name__ == "__main__":
-    to_sql_pipeline(date="2026-03-15")
+    to_sql_pipeline()
     
         
     

@@ -34,23 +34,23 @@ def youtube_data_pipeline_dag():
     
     @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def collect_raw_data():
-        file_path = "raw_data/raw_data_handler.py"
-        return f"{env_path} {base_scripts_path}/{file_path}"
+        file_path = "src.raw_data.raw_data_handler"
+        return f"cd {base_scripts_path} && {env_path} -m {file_path}"
 
     @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def convert_to_delta_table():
-        file_path = "delta_lake/delta_table_pipeline.py"
-        return f"{env_path} {base_scripts_path}/{file_path}"
+        file_path = "src.delta_lake.delta_table_pipeline"
+        return f"cd {base_scripts_path} && {env_path} -m {file_path}"
 
     @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def convert_to_sql():
-        file_path = "data_warehouse/data_warehouse_pipeline.py"
-        return f"{env_path} {base_scripts_path}/{file_path}"
+        file_path = "src.data_warehouse.data_warehouse_pipeline"
+        return f"cd {base_scripts_path} && {env_path} -m {file_path}"
 
     @task.bash(env= {"RUN_DATE": "{{ ds }}"}, **email_args)
     def write_to_kaggle():
-        file_path = "kaggle/kaggle_pipeline.py"
-        return f"{env_path} {base_scripts_path}/{file_path}"
+        file_path = "src.kaggle.upload_dataframe_kaggle"
+        return f"cd {base_scripts_path} && {env_path} -m {file_path}"
 
     raw_data_task = collect_raw_data()
     delta_table_task = convert_to_delta_table()

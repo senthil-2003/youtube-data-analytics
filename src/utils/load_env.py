@@ -69,6 +69,11 @@ class get_env:
             self.DB_USER = os.getenv('db_user', None)
             self.DB_PASS = os.getenv('db_pass', None)
             self.DB_PORT = os.getenv('db_port', None)
+            
+            # kaggle credentials
+            self.KAGGLE_USERNAME = os.getenv('kaggle_username', None)
+            self.KAGGLE_DATASET_NAME = os.getenv('kaggle_dataset_name', None)
+            self.KAGGLE_API_TOKEN = os.getenv('kaggle_api_token', None)
 
             self.validate()
             

@@ -170,12 +170,8 @@ def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
 
 if __name__ == "__main__":
     try:
-        date = "14-03-2026"
-        flag = to_silver_pipeline(date=date)
-        if flag:
-            logger.info(f"The silver pipeline has completed successfully for the date {date}")
-        else:
-            logger.warning(f"The silver pipeline has completed with issues for the date {date}")
+        # date = "14-03-2026"
+        to_silver_pipeline()
     except Exception as e:
         logger.error(f"An error occurred while running the silver pipeline and the error is {e}")
         raise

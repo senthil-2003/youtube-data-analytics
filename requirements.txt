@@ -144,7 +144,7 @@ uritemplate==4.2.0
 urllib3==2.6.3
 uuid6==2025.0.1
 uvicorn==0.42.0
-uvloop==0.22.1
+uvloop==0.22.1;sys.platform != "win32"
 watchfiles==1.1.1
 websockets==16.0
 wirerope==1.0.0

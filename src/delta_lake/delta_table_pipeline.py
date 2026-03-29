@@ -120,7 +120,7 @@ def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
     try:
         popular_video_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_VIDEO_FILE_NAME).replace("\\","/"))
         popular_video_raw_df = read_obj.read_json(file_location=popular_video_raw_data_location, multiline_flag=True, type_toggle="video")
-        popular_video_raw_df_filtered = df_filter_obj.format_videos(popular_video_raw_df)
+        popular_video_raw_df_filtered = df_filter_obj.format_videos(popular_video_raw_df, date)
         
         video_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_VIDEO_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark,video_data_delta_location):
@@ -146,7 +146,7 @@ def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
     try:
         popular_comments_raw_data_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.RAW_FOLDER_NAME, date, "*", cred.POPULAR_COMMENTS_FILE_NAME+"_*.json").replace("\\","/"))
         popular_comments_raw_df = read_obj.read_json(file_location=popular_comments_raw_data_location, multiline_flag=True, type_toggle="comment")
-        popular_comments_raw_df_filtered = df_filter_obj.format_comments(popular_comments_raw_df)
+        popular_comments_raw_df_filtered = df_filter_obj.format_comments(popular_comments_raw_df, date)
 
         comment_data_delta_location = azure_link_builder(cred.CONTAINER_NAME, cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME, cred.PROCESSED_COMMENT_DELTA_TABLE_NAME).replace("\\","/"))
         if DeltaTable.isDeltaTable(spark, comment_data_delta_location):

@@ -1,5 +1,6 @@
 from airflow.sdk import dag, task
 from airflow.models import Variable
+from airflow.utils.email import send_email
 from datetime import datetime, timedelta
 
 default_args = {
@@ -13,11 +14,19 @@ default_args = {
     'execution_timeout' : timedelta(minutes=10)
 }
 
+def success_email(context):
+    subject = "YouTube Data Pipeline DAG Success"
+    body = "The YouTube Data Pipeline DAG has completed successfully."
+    email_id = Variable.get("youtube_data_pipeline_email_notification").split(",")
+    
+    send_email(to=email_id, subject=subject, html_content=body)
+
 @dag(dag_id="youtube_etl_dag", 
      start_date= datetime(2026, 3, 22), 
-     schedule = "@daily", 
+     schedule = "30 3 * * *", 
      default_args = default_args, 
      catchup=False,
+     on_success_callback=success_email,
     dagrun_timeout = timedelta(minutes=60),
 )
 def youtube_data_pipeline_dag():

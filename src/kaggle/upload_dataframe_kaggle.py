@@ -33,7 +33,13 @@ spark = (SparkSession.builder
 
 def upload_recent_data_kaggle(date: str = os.getenv("RUN_DATE")):   
     try:
-        if not date or not datetime.strptime(date, "%Y-%m-%d"):
+        if not date:
+            logger.error("RUN_DATE environment variable is not set. Please provide a valid date in YYYY-MM-DD format.")
+            raise ValueError("RUN_DATE environment variable is not set. Please provide a valid date in YYYY-MM-DD format.")
+        
+        try:
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
             logger.error(f"Invalid date format provided: {date}. Expected format is YYYY-MM-DD.")
             raise ValueError(f"Invalid date format provided: {date}. Expected format is YYYY-MM-DD.")
         
@@ -41,6 +47,7 @@ def upload_recent_data_kaggle(date: str = os.getenv("RUN_DATE")):
             for table in [config.I18N_COUNTRIES_TABLE_NAME,config.VIDEO_CATEGORIES_TABLE_NAME,config.VIDEO_STATS_TABLE_NAME,config.VIDEO_TABLE_NAME,config.COMMENT_TABLE_NAME]:   
                 df = read_sql_tables(spark, table)
                 write_csv_tables(df, table, temp_dir)
+                logger.info(f"Successfully uploaded the recent data of {table} to Kaggle dataset: {config.KAGGLE_DATASET_NAME} for date: {date}")
                 
             version_notes = f"Upload recent data for date: {date}"
             handle = f"{config.KAGGLE_USERNAME}/{config.KAGGLE_DATASET_NAME}"
@@ -49,8 +56,6 @@ def upload_recent_data_kaggle(date: str = os.getenv("RUN_DATE")):
                 temp_dir,
                 version_notes=version_notes
             )
-            
-            logger.info(f"Successfully uploaded the recent data of {table} to Kaggle dataset: {config.KAGGLE_DATASET_NAME} for date: {date}")
             
     except Exception as e:
         logger.error(f"Error uploading recent data to Kaggle for date: {date}. Error details: {e}")

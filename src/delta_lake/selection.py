@@ -1,6 +1,6 @@
 from pyspark.sql.functions import ( col, explode, input_file_name, regexp_replace, element_at, 
                                     split, map_keys, map_values, expr, current_timestamp, date_format, 
-                                    current_date, to_timestamp, to_date, desc, row_number)
+                                    lit, to_timestamp, to_date, desc, row_number)
 from pyspark.sql.window import Window
 from pyspark.sql.dataframe import DataFrame
 
@@ -40,7 +40,7 @@ class Format:
             raise RuntimeError(f"An error occurred while formatting the i18n region data and the error is {e}") from e
 
     @staticmethod
-    def format_comments(df: DataFrame) -> DataFrame:
+    def format_comments(df: DataFrame, run_date: str) -> DataFrame:
         try:
             df_filtered = df.withColumn('Items',explode(col('Items'))).withColumn("published_timestamp_utc",to_timestamp(col("Items.snippet.topLevelComment.snippet.publishedAt")).alias("Published_Timestamp_UTC"))\
                 .select(
@@ -55,7 +55,7 @@ class Format:
                 col("Items.snippet.videoId").alias('video_id')
             )
 
-            df_time_added = df_filtered.withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date_UTC",current_date())
+            df_time_added = df_filtered.withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss")).withColumn("Ingestion_Date_UTC",lit(run_date))
 
             # remove the duplicate comments inside same batch by filtering the comments with highest like.
             window_q = Window.partitionBy("Comment_ID").orderBy(desc(col("Like_Count")))
@@ -68,7 +68,7 @@ class Format:
             raise RuntimeError(f"An error occurred while formatting the comments data and the error is {e}") from e
 
     @staticmethod
-    def format_videos(df: DataFrame) -> DataFrame:
+    def format_videos(df: DataFrame, run_date: str) -> DataFrame:
         try:
             df_filtered = df.withColumn('items_exploded', explode(col('items'))).withColumn("path", input_file_name()).withColumn("published_timestamp_utc",to_timestamp(col("items_exploded.snippet.publishedAt")).alias("Published_Time_UTC"))\
                           .select(
@@ -102,7 +102,7 @@ class Format:
                                                             coalesce(try_cast(regexp_extract(Content_Duration, '(?i)T(?:[0-9]+H)?(?:[0-9]+M)?([0-9]+)S', 1) AS INT), 0)
                                                         """)).drop("Content_Duration")
 
-            df_time_added = df_normalized.withColumn("Ingestion_Date_UTC",current_date()).withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss"))
+            df_time_added = df_normalized.withColumn("Ingestion_Date_UTC",lit(run_date)).withColumn("Ingestion_Time_UTC",date_format(current_timestamp(), "HH:mm:ss"))
 
             return df_time_added
         

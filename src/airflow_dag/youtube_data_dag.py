@@ -97,7 +97,7 @@ def failure_message(context):
 
 @dag(dag_id="youtube_etl_dag",
      start_date=datetime(2026, 3, 22),
-     schedule="30 3 * * *",
+     schedule="30 2 * * 3",
      default_args=default_args,
      catchup=False,
      on_success_callback=success_message,

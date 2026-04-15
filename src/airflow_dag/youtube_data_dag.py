@@ -5,17 +5,6 @@ from datetime import datetime, timedelta, timezone
 from requests import post, exceptions
 from traceback import format_exception
 
-default_args = {
-    'owner' : "senthil",
-    
-    #retry behaviour
-    'retries' : 3,
-    'retry_delay' : timedelta(minutes=1),
-    
-    # timeouts
-    'execution_timeout' : timedelta(minutes=10),
-}
-
 def send_discord_alert(payload_values: dict):
     conn = BaseHook.get_connection("DISCORD_ALERT_CHANNEL_WEBHOOK_URL")
     payload = {"embeds":[payload_values]}
@@ -94,6 +83,19 @@ def failure_message(context):
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     send_discord_alert(embed)
+    
+default_args = {
+    'owner' : "senthil",
+    
+    #retry behaviour
+    'retries' : 3,
+    'retry_delay' : timedelta(minutes=1),
+    
+    # timeouts
+    'execution_timeout' : timedelta(minutes=10),
+    
+    'on_failure_callback': failure_message
+}
 
 @dag(dag_id="youtube_etl_dag",
      start_date=datetime(2026, 3, 22),
@@ -101,8 +103,7 @@ def failure_message(context):
      default_args=default_args,
      catchup=False,
      on_success_callback=success_message,
-     on_failure_callback=failure_message,
-    dagrun_timeout = timedelta(minutes=60),
+     dagrun_timeout = timedelta(minutes=60),
 )
 def youtube_data_pipeline_dag():
 

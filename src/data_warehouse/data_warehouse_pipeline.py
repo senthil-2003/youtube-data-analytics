@@ -67,17 +67,15 @@ def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
     else:
         logger.info("All required tables are present in the database. Proceeding with the pipeline.")
 
+    i1_countries_delta_table_location = azure_link_builder(container_name=cred.CONTAINER_NAME, account_name=cred.AZURE_ACCOUNT_NAME, location= os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME)).replace("\\","/")      
+    if not DeltaTable.isDeltaTable(spark, i1_countries_delta_table_location):
+        logger.error(f"Delta table does not exist at location: {i1_countries_delta_table_location}")
+        raise FileNotFoundError(f"Delta table does not exist at location: {i1_countries_delta_table_location}")  
+    i1_countries_df = read_obj.read_delta_table(i1_countries_delta_table_location)
+
     # check if the i18n countries list is already present in the database, If not, then read the respective delta tbale and then write the data to the sql table.
     if not check_table_contents(spark, cred.I18N_COUNTRIES_TABLE_NAME, cred.DB_NAME, conn_obj):
         logger.warning(f"Table is empty: {cred.I18N_COUNTRIES_TABLE_NAME}")
-        
-        i1_countries_delta_table_location = azure_link_builder(container_name=cred.CONTAINER_NAME, account_name=cred.AZURE_ACCOUNT_NAME, location= os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME)).replace("\\","/")
-        
-        if not DeltaTable.isDeltaTable(spark, i1_countries_delta_table_location):
-            logger.error(f"Delta table does not exist at location: {i1_countries_delta_table_location}")
-            raise FileNotFoundError(f"Delta table does not exist at location: {i1_countries_delta_table_location}")
-        
-        i1_countries_df = read_obj.read_delta_table(i1_countries_delta_table_location)
         
         write_obj.write_sql_table(
             table_name=cred.I18N_COUNTRIES_TABLE_NAME,
@@ -87,7 +85,17 @@ def to_sql_pipeline(date: str = os.getenv("RUN_DATE")):
         
         logger.info(f"Successfully wrote dataframe to table {cred.I18N_COUNTRIES_TABLE_NAME}")
     else:
-        logger.info(f"Table {cred.I18N_COUNTRIES_TABLE_NAME} already has data. Skipping writing to this table.")
+        i18n_countries_existing_df = read_obj.read_sql_table(cred.I18N_COUNTRIES_TABLE_NAME)
+        i18n_diff_df = i1_countries_df.join(i18n_countries_existing_df, on = "region_code", how= "leftanti")
+        
+        if i18n_diff_df.count() > 0:
+            write_obj.write_sql_table(
+                table_name=cred.I18N_COUNTRIES_TABLE_NAME,
+                mode="append",
+                dataframe=i18n_diff_df
+            )
+            
+        logger.info(f"Table {cred.I18N_COUNTRIES_TABLE_NAME} already has data. Appended only new records to this table.")
         
     # check if the video categories table is already populated with data, If not, then read the respective delta table and then write the data to the sql table.
     if not check_table_contents(spark, cred.VIDEO_CATEGORIES_TABLE_NAME, cred.DB_NAME, conn_obj):

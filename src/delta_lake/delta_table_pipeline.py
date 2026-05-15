@@ -95,6 +95,18 @@ def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
             
             write_obj.to_delta(i1_8n_df_final, mode="overwrite", categories="i18n", file_location=i18n_delta_azure_location)
             logger.info(f"The delta table for i18n data has been created successfully at the location {i18n_delta_azure_location}")
+        else:
+            i18n_existing_df = read_obj.read_delta(i18n_delta_azure_location)
+            
+            i1_8n_df_raw = read_obj.read_json(file_location=i1_8n_raw_azure_location, multiline_flag=True, type_toggle="i18n")
+            i1_8n_df = df_filter_obj.format_i18n_region(i1_8n_df_raw)
+            
+            i1_8n_diff = i1_8n_df.join(i18n_existing_df, on = "region_code", how='leftanti')
+            
+            if i1_8n_diff.count() > 0:
+                write_obj.to_delta(i1_8n_diff, mode="append", categories="i18n", file_location=i18n_delta_azure_location)
+                logger.info(f"The delta table for i18n data has been appended successfully with the new data from the raw files")
+            
     except Exception as e:
         logger.error(f"An error occurred while processing the i18n data and the error is {e}")
         raise

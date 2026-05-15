@@ -80,9 +80,10 @@ def to_silver_pipeline(date: str = os.getenv("RUN_DATE")):
 
     try: 
         i18n_delta_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.PROCESSED_FOLDER_NAME,cred.PROCESSED_I18N_DELTA_TABLE_NAME).replace("\\","/"))
+        i1_8n_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.I18N_FILE_NAME).replace("\\","/"))
         if not DeltaTable.isDeltaTable(spark, i18n_delta_azure_location):
             logger.info(f"The delta table for i18n data is not present in the provided location {i18n_delta_azure_location} and the pipeline will start processing the raw data to create the delta table")
-            i1_8n_raw_azure_location = azure_link_builder(cred.CONTAINER_NAME,cred.AZURE_ACCOUNT_NAME, os.path.join(cred.UTIL_FOLDER_NAME,cred.I18N_FILE_NAME).replace("\\","/"))
+            
             if not check_file_exists(spark, i1_8n_raw_azure_location):
                 logger.error(f"The i18n json file name is not present in the provided location {i1_8n_raw_azure_location}")
                 raise FileNotFoundError(f"The i18n json file name is not present in the provided location {i1_8n_raw_azure_location}")
